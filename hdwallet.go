@@ -92,6 +92,45 @@ func NewFromSeed(seed []byte) (*Wallet, error) {
 	return newWallet(seed)
 }
 
+// OpenFromPrivateKey returns a new wallet from a private key.
+func OpenFromPrivateKey(privKey []byte) (*Wallet, error) {
+	if len(privKey) == 0 {
+		return nil, errors.New("private key is required")
+	}
+
+	privKeyECDSA, err := crypto.ToECDSA(privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return OpenFromECDSAKey(privKeyECDSA)
+}
+
+// OpenFromECDSAKey returns a new wallet from an ECDSA private key.
+func OpenFromECDSAKey(privKeyECDSA *ecdsa.PrivateKey) (*Wallet, error) {
+	if privKeyECDSA == nil {
+		return nil, errors.New("private key is required")
+	}
+
+	pubKeyECDSA := privKeyECDSA.Public().(*ecdsa.PublicKey)
+	pubKeyBytes := crypto.FromECDSAPub(pubKeyECDSA)
+
+	address := crypto.PubkeyToAddress(*pubKeyECDSA)
+
+	wallet, err := newWallet(pubKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	wallet.accounts = []accounts.Account{
+		{
+			Address: address,
+		},
+	}
+
+	return wallet, nil
+}
+
 // URL implements accounts.Wallet, returning the URL of the device that
 // the wallet is on, however this does nothing since this is not a hardware device.
 func (w *Wallet) URL() accounts.URL {
